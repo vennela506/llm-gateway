@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # --- Our Gateway API ---
+  api:
+    build: .
+    container_name: llm_gateway_api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - PORT=8000
+      # Notice we use the container names "redis" and "postgres" here instead of localhost!
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/llm_gateway
+      # Pull API keys from your host machine's .env file into the container
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # --- Database ---
+  postgres:
+    image: postgres:15-alpine
+    container_name: llm_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: llm_gateway
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d llm_gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- Cache ---
+  redis:
+    image: redis:7-alpine
+    container_name: llm_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
