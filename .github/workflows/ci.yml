@@ -10,7 +10,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    # Spin up temporary DB and Cache containers for our tests!
     services:
       postgres:
         image: postgres:15-alpine
@@ -49,10 +48,18 @@ jobs:
       - name: Run Database Migrations
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/llm_gateway
+          # Dummy keys so the app doesn't crash on import!
+          OPENAI_API_KEY: "sk-dummy"
+          ANTHROPIC_API_KEY: "sk-ant-dummy"
+          GROQ_API_KEY: "gsk_dummy"
         run: uv run alembic upgrade head
 
       - name: Run Tests
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/llm_gateway
           REDIS_URL: redis://localhost:6379/0
+          # Dummy keys for the tests
+          OPENAI_API_KEY: "sk-dummy"
+          ANTHROPIC_API_KEY: "sk-ant-dummy"
+          GROQ_API_KEY: "gsk_dummy"
         run: uv run pytest
