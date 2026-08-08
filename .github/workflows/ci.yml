@@ -10,6 +10,27 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    # Spin up temporary DB and Cache containers for our tests!
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: llm_gateway
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -25,5 +46,13 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Run Database Migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/llm_gateway
+        run: uv run alembic upgrade head
+
       - name: Run Tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/llm_gateway
+          REDIS_URL: redis://localhost:6379/0
         run: uv run pytest
