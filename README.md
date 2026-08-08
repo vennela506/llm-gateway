@@ -1419,10 +1419,6 @@ The application communicates with the gateway rather than directly with the prov
 # License
 
 This project is intended as a production-inspired engineering project.
-
-Add your preferred license here, for example:
-
-```text
 MIT License
 ```
 
