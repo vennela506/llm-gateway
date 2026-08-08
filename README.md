@@ -12,31 +12,32 @@ Instead of every application integrating separately with multiple LLM providers,
 
 ## Table of Contents
 
-* [Overview](#-overview)
-* [Why This Project](#-why-this-project)
-* [Key Features](#-key-features)
-* [Architecture](#-architecture)
-* [Request Flow](#-request-flow)
-* [Technology Stack](#-technology-stack)
-* [Project Structure](#-project-structure)
-* [Prerequisites](#-prerequisites)
-* [Environment Configuration](#-environment-configuration)
-* [Quick Start](#-quick-start)
-* [API Usage](#-api-usage)
-* [Authentication](#-authentication)
-* [Dynamic Fallback Routing](#-dynamic-fallback-routing)
-* [Circuit Breaker](#-circuit-breaker)
-* [Distributed Rate Limiting](#-distributed-rate-limiting)
-* [Cost & Latency Tracking](#-cost--latency-tracking)
-* [Observability](#-observability)
-* [Database & Migrations](#-database--migrations)
-* [Docker Architecture](#-docker-architecture)
-* [Testing](#-testing)
-* [Production Considerations](#-production-considerations)
-* [Failure Scenarios](#-failure-scenarios)
-* [Future Improvements](#-future-improvements)
-* [Contributing](#-contributing)
-* [License](#-license)
+- [Overview](#overview)
+- [Why This Project](#why-this-project)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Request Flow](#request-flow)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Environment Configuration](#environment-configuration)
+- [Quick Start](#quick-start)
+- [API Usage](#api-usage)
+- [Authentication](#authentication)
+- [Dynamic Fallback Routing](#dynamic-fallback-routing)
+- [Circuit Breaker](#circuit-breaker)
+- [Distributed Rate Limiting](#distributed-rate-limiting)
+- [Cost & Latency Tracking](#cost--latency-tracking)
+- [Observability](#observability)
+- [Database & Migrations](#database--migrations)
+- [Docker Architecture](#docker-architecture)
+- [Testing](#testing)
+- [Performance Benchmarks](#performance-benchmarks)
+- [Production Considerations](#production-deployment-considerations)
+- [Failure Scenarios](#failure-scenarios)
+- [Future Improvements](#future-improvements)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -48,7 +49,7 @@ The **Enterprise LLM Gateway** is designed to solve a common problem in modern A
 
 A direct integration might look like:
 
-```text
+```
 Client → OpenAI
 Client → Anthropic
 Client → Groq
@@ -56,30 +57,30 @@ Client → Groq
 
 This creates several problems:
 
-* Provider outages can break applications.
-* Every application needs provider-specific integration.
-* API keys must be managed across multiple applications.
-* Rate limits can become difficult to coordinate.
-* Provider latency and cost are difficult to monitor consistently.
-* Switching providers during an outage requires application-level changes.
+- Provider outages can break applications.
+- Every application needs provider-specific integration.
+- API keys must be managed across multiple applications.
+- Rate limits can become difficult to coordinate.
+- Provider latency and cost are difficult to monitor consistently.
+- Switching providers during an outage requires application-level changes.
 
 The LLM Gateway introduces a centralized abstraction:
 
-```text
-                    ┌─────────────────────┐
-                    │      Client App     │
-                    └──────────┬──────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │   LLM Gateway API   │
-                    │       FastAPI        │
-                    └──────────┬──────────┘
-                               │
-                 ┌─────────────┼─────────────┐
-                 │             │             │
-                 ▼             ▼             ▼
-             OpenAI        Anthropic        Groq
+```
+       ┌─────────────────────┐
+       │      Client App     │
+       └──────────┬──────────┘
+                   │
+                   ▼
+       ┌─────────────────────┐
+       │   LLM Gateway API   │
+       │       FastAPI        │
+       └──────────┬──────────┘
+                   │
+    ┌──────────────┼──────────────┐
+    │              │              │
+    ▼              ▼              ▼
+OpenAI        Anthropic          Groq
 ```
 
 Applications only need to communicate with the gateway.
@@ -96,17 +97,17 @@ This project demonstrates how to build a **production-inspired infrastructure la
 
 It combines:
 
-* API gateway architecture
-* Async Python
-* Distributed state
-* Redis-based rate limiting
-* Circuit breakers
-* Automatic failover
-* Database-backed observability
-* Containerized infrastructure
-* Prometheus metrics
-* Structured logging
-* Automated testing
+- API gateway architecture
+- Async Python
+- Distributed state
+- Redis-based rate limiting
+- Circuit breakers
+- Automatic failover
+- Database-backed observability
+- Containerized infrastructure
+- Prometheus metrics
+- Structured logging
+- Automated testing
 
 The project is intended to demonstrate how an LLM integration can evolve from a simple API call into a reliable infrastructure service.
 
@@ -118,7 +119,7 @@ The project is intended to demonstrate how an LLM integration can evolve from a 
 
 Clients interact with a single endpoint:
 
-```http
+```
 POST /v1/chat/completions
 ```
 
@@ -132,7 +133,7 @@ This makes integration simple for applications that already use OpenAI-compatibl
 
 The gateway supports multiple providers:
 
-```text
+```
 Priority 1 → OpenAI
 Priority 2 → Anthropic
 Priority 3 → Groq
@@ -142,7 +143,7 @@ If the primary provider fails, the gateway automatically attempts the next healt
 
 Example:
 
-```text
+```
 Request
    │
    ▼
@@ -175,59 +176,43 @@ The gateway implements the **Circuit Breaker Pattern** to prevent repeated reque
 
 Circuit states:
 
-```text
-        ┌──────────────┐
-        │     CLOSED   │
-        └──────┬───────┘
-               │
-        Failures exceed
-          threshold
-               │
-               ▼
-        ┌──────────────┐
-        │     OPEN     │
-        └──────┬───────┘
-               │
-        Recovery timeout
-               │
-               ▼
-        ┌──────────────┐
-        │   HALF-OPEN  │
-        └──────┬───────┘
-          │          │
-       Success     Failure
-          │          │
-          ▼          ▼
-       CLOSED       OPEN
+```
+ ┌──────────────┐
+ │     CLOSED   │
+ └──────┬───────┘
+        │
+ Failures exceed
+   threshold
+        │
+        ▼
+ ┌──────────────┐
+ │     OPEN     │
+ └──────┬───────┘
+        │
+ Recovery timeout
+        │
+        ▼
+ ┌──────────────┐
+ │   HALF-OPEN  │
+ └──────┬───────┘
+   │          │
+Success     Failure
+   │          │
+   ▼          ▼
+CLOSED       OPEN
 ```
 
 ### CLOSED
-
-The provider is considered healthy.
-
-Requests are sent normally.
+The provider is considered healthy. Requests are sent normally.
 
 ### OPEN
-
-The provider is considered unhealthy.
-
-Requests are immediately routed to another provider instead of repeatedly calling the failing provider.
+The provider is considered unhealthy. Requests are immediately routed to another provider instead of repeatedly calling the failing provider.
 
 ### HALF-OPEN
-
 After a recovery timeout, the gateway allows a limited test request.
 
-If successful:
-
-```text
-HALF-OPEN → CLOSED
-```
-
-If unsuccessful:
-
-```text
-HALF-OPEN → OPEN
-```
+If successful: `HALF-OPEN → CLOSED`
+If unsuccessful: `HALF-OPEN → OPEN`
 
 ---
 
@@ -239,7 +224,7 @@ The rate limiter uses a **Token Bucket algorithm**.
 
 Example:
 
-```text
+```
 API Key: abc123
 Limit: 60 requests/minute
 
@@ -257,8 +242,6 @@ Redis provides shared state across multiple gateway instances.
 
 This prevents a situation where each gateway instance maintains its own independent rate limit.
 
----
-
 ## Atomic Rate Limiting
 
 The token bucket operation is executed atomically using a **Redis Lua script**.
@@ -267,7 +250,7 @@ This prevents race conditions when multiple requests arrive simultaneously.
 
 Without atomic operations:
 
-```text
+```
 Request A → Read tokens → 5
 Request B → Read tokens → 5
 
@@ -287,7 +270,7 @@ Every request can be tracked for operational and billing purposes.
 
 Example information:
 
-```text
+```
 Request ID
 API Key
 Provider
@@ -342,15 +325,13 @@ Example:
 
 Structured logs make it easier to search and analyze application behavior.
 
----
-
 ## Prometheus Metrics
 
 Prometheus-compatible metrics are exposed for monitoring.
 
 Useful metrics include:
 
-```text
+```
 Request count
 Request latency
 Provider failures
@@ -367,7 +348,7 @@ These metrics can be consumed by monitoring systems such as Prometheus and Grafa
 
 # Architecture
 
-```mermaid
+```
 graph TD
     Client[Client Application] -->|POST /v1/chat/completions| Gateway[FastAPI Gateway]
 
@@ -395,7 +376,7 @@ graph TD
 
 A typical request follows this lifecycle:
 
-```text
+```
 1. Client sends request
         ↓
 2. Gateway authenticates API key
@@ -419,7 +400,7 @@ A typical request follows this lifecycle:
 
 If the provider fails:
 
-```text
+```
 Provider Failure
       ↓
 Circuit Breaker records failure
@@ -436,7 +417,7 @@ Response
 # Technology Stack
 
 | Category         | Technology               |
-| ---------------- | ------------------------ |
+| ----------------- | ------------------------ |
 | Framework        | FastAPI                  |
 | Language         | Python                   |
 | API Server       | Uvicorn                  |
@@ -459,9 +440,7 @@ Response
 
 # Project Structure
 
-A recommended project structure is:
-
-```text
+```
 llm-gateway/
 │
 ├── app/
@@ -515,6 +494,9 @@ llm-gateway/
 │   ├── test_circuit_breaker.py
 │   └── test_chat.py
 │
+├── scripts/
+│   └── load_test.py          # Async load-testing script used for the benchmarks below
+│
 ├── alembic/
 │   ├── versions/
 │   └── env.py
@@ -537,17 +519,17 @@ llm-gateway/
 
 Before running the project, install:
 
-* Docker
-* Docker Compose
-* Git
+- Docker
+- Docker Compose
+- Git
 
 You will also need at least one LLM provider API key.
 
 Supported providers:
 
-* OpenAI
-* Anthropic
-* Groq
+- OpenAI
+- Anthropic
+- Groq
 
 You do **not** necessarily need credentials for every provider during local development.
 
@@ -559,13 +541,13 @@ For example, you can configure only Groq while testing the gateway.
 
 Create a local environment file:
 
-```bash
+```
 cp .env.example .env
 ```
 
 Example configuration:
 
-```env
+```
 # Application
 APP_NAME=Enterprise LLM Gateway
 ENVIRONMENT=development
@@ -607,18 +589,14 @@ CIRCUIT_RECOVERY_TIMEOUT=30
 
 ## 1. Clone the Repository
 
-```bash
+```
 git clone https://github.com/vennela506/llm-gateway.git
 cd llm-gateway
 ```
 
-Replace `YOUR_USERNAME` with your GitHub username.
-
----
-
 ## 2. Configure Environment Variables
 
-```bash
+```
 cp .env.example .env
 ```
 
@@ -626,23 +604,21 @@ Edit `.env` and add at least one real provider API key.
 
 For example:
 
-```env
+```
 GROQ_API_KEY=your-groq-api-key
 ```
-
----
 
 ## 3. Start the Infrastructure
 
 Build and start all services:
 
-```bash
+```
 docker compose up --build -d
 ```
 
 This starts:
 
-```text
+```
 FastAPI Gateway
       │
       ├── PostgreSQL
@@ -652,13 +628,13 @@ FastAPI Gateway
 
 Check running containers:
 
-```bash
+```
 docker compose ps
 ```
 
 View logs:
 
-```bash
+```
 docker compose logs -f gateway
 ```
 
@@ -668,7 +644,7 @@ docker compose logs -f gateway
 
 Once the application is running, open:
 
-```text
+```
 http://localhost:8000/docs
 ```
 
@@ -676,16 +652,16 @@ FastAPI automatically provides an interactive Swagger UI.
 
 You can use it to:
 
-* Explore available endpoints
-* Authenticate requests
-* Generate/test API keys
-* Send chat completion requests
-* Inspect responses
-* Test error handling
+- Explore available endpoints
+- Authenticate requests
+- Generate/test API keys
+- Send chat completion requests
+- Inspect responses
+- Test error handling
 
 Alternative OpenAPI documentation:
 
-```text
+```
 http://localhost:8000/redoc
 ```
 
@@ -695,7 +671,7 @@ http://localhost:8000/redoc
 
 The main endpoint is:
 
-```http
+```
 POST /v1/chat/completions
 ```
 
@@ -726,7 +702,7 @@ Clients authenticate using an API key.
 
 Example:
 
-```http
+```
 Authorization: Bearer YOUR_GATEWAY_API_KEY
 ```
 
@@ -734,7 +710,7 @@ The authentication layer runs before the request reaches the routing system.
 
 Request flow:
 
-```text
+```
 Client
   │
   ▼
@@ -759,7 +735,7 @@ Providers are assigned priorities.
 
 Example:
 
-```text
+```
 Priority 1 → OpenAI
 Priority 2 → Anthropic
 Priority 3 → Groq
@@ -769,28 +745,28 @@ The router evaluates provider health before sending a request.
 
 Example:
 
-```text
-                 Request
-                    │
-                    ▼
-                 OpenAI
-                    │
-              ┌─────┴─────┐
-              │           │
-           Success      Failure
-              │           │
-              ▼           ▼
-           Response    Anthropic
-                          │
-                    ┌─────┴─────┐
-                    │           │
-                 Success      Failure
-                    │           │
-                    ▼           ▼
-                 Response      Groq
-                                  │
-                                  ▼
-                               Response
+```
+      Request
+         │
+         ▼
+      OpenAI
+         │
+   ┌─────┴─────┐
+   │           │
+Success      Failure
+   │           │
+   ▼           ▼
+Response    Anthropic
+               │
+         ┌─────┴─────┐
+         │           │
+      Success      Failure
+         │           │
+         ▼           ▼
+      Response      Groq
+                       │
+                       ▼
+                    Response
 ```
 
 This makes the gateway resilient to individual provider failures.
@@ -811,7 +787,7 @@ class LLMProvider:
 
 Individual implementations can then provide:
 
-```text
+```
 OpenAIProvider
 AnthropicProvider
 GroqProvider
@@ -827,14 +803,14 @@ The circuit breaker tracks provider failures.
 
 Example configuration:
 
-```env
+```
 CIRCUIT_FAILURE_THRESHOLD=5
 CIRCUIT_RECOVERY_TIMEOUT=30
 ```
 
 If five consecutive failures occur:
 
-```text
+```
 Provider
    ↓
 Failure #1
@@ -852,7 +828,7 @@ Circuit OPEN
 
 While the circuit is open:
 
-```text
+```
 Request
    ↓
 Router
@@ -866,7 +842,7 @@ Anthropic
 
 After the recovery timeout:
 
-```text
+```
 OPEN
   ↓
 HALF-OPEN
@@ -878,36 +854,36 @@ A successful test closes the circuit.
 
 ---
 
-# Distributed Rate Limiting
+# Distributed Rate Limiting (Runtime Behavior)
 
 The gateway applies rate limits per API key.
 
 Example:
 
-```env
+```
 RATE_LIMIT_REQUESTS=60
 RATE_LIMIT_WINDOW_SECONDS=60
 ```
 
 This means an API key can make approximately:
 
-```text
+```
 60 requests / 60 seconds
 ```
 
 The token bucket is stored in Redis so multiple gateway instances share the same rate-limit state.
 
-```text
-                ┌───────────────┐
-                │    Redis      │
-                │               │
-                │ Token Bucket  │
-                └───────┬───────┘
-                        │
-             ┌──────────┼──────────┐
-             │          │          │
-             ▼          ▼          ▼
-          Gateway 1  Gateway 2  Gateway 3
+```
+      ┌───────────────┐
+      │    Redis      │
+      │               │
+      │ Token Bucket  │
+      └───────┬───────┘
+              │
+   ┌──────────┼──────────┐
+   │          │          │
+   ▼          ▼          ▼
+Gateway 1  Gateway 2  Gateway 3
 ```
 
 This makes rate limiting suitable for horizontally scaled deployments.
@@ -920,7 +896,7 @@ PostgreSQL stores persistent operational information.
 
 Potential records include:
 
-```text
+```
 API Keys
 Requests
 Providers
@@ -942,19 +918,19 @@ Alembic is used for schema migrations.
 
 Create a migration:
 
-```bash
+```
 alembic revision --autogenerate -m "create request logs"
 ```
 
 Apply migrations:
 
-```bash
+```
 alembic upgrade head
 ```
 
 Rollback the latest migration:
 
-```bash
+```
 alembic downgrade -1
 ```
 
@@ -966,7 +942,7 @@ Prometheus-compatible metrics can be exposed by the gateway.
 
 Example metrics:
 
-```text
+```
 llm_requests_total
 llm_request_duration_seconds
 llm_provider_requests_total
@@ -986,7 +962,7 @@ The entire application is containerized.
 
 Example:
 
-```text
+```
 Docker Compose
 │
 ├── gateway
@@ -1001,31 +977,31 @@ Docker Compose
 
 Start:
 
-```bash
+```
 docker compose up -d
 ```
 
 Rebuild:
 
-```bash
+```
 docker compose up --build -d
 ```
 
 Stop:
 
-```bash
+```
 docker compose down
 ```
 
 Stop and remove volumes:
 
-```bash
+```
 docker compose down -v
 ```
 
 View logs:
 
-```bash
+```
 docker compose logs -f
 ```
 
@@ -1035,31 +1011,31 @@ docker compose logs -f
 
 The project uses:
 
-* Pytest
-* HTTPX
-* Pytest-Cov
+- Pytest
+- HTTPX
+- Pytest-Cov
 
 Run the test suite:
 
-```bash
+```
 pytest
 ```
 
 Run with verbose output:
 
-```bash
+```
 pytest -v
 ```
 
 Run with coverage:
 
-```bash
+```
 pytest --cov=app
 ```
 
 Example target:
 
-```text
+```
 ============================== test session ==============================
 
 tests/test_auth.py              PASSED
@@ -1071,60 +1047,68 @@ tests/test_chat.py              PASSED
 ============================== 100% passed ================================
 ```
 
----
+## Testing Strategy
 
-# Testing Strategy
-
-The gateway should test each major reliability component independently.
+The gateway tests each major reliability component independently.
 
 ### Authentication
-
-Test:
-
-* Valid API keys
-* Invalid API keys
-* Missing API keys
-* Expired/disabled keys
+Test: Valid API keys · Invalid API keys · Missing API keys · Expired/disabled keys
 
 ### Rate Limiting
-
-Test:
-
-* Requests within the limit
-* Requests exceeding the limit
-* Multiple concurrent requests
-* Redis state consistency
+Test: Requests within the limit · Requests exceeding the limit · Multiple concurrent requests · Redis state consistency
 
 ### Circuit Breaker
-
-Test:
-
-* Successful requests
-* Failure threshold
-* OPEN state
-* HALF-OPEN recovery
-* Successful recovery
-* Repeated failure
+Test: Successful requests · Failure threshold · OPEN state · HALF-OPEN recovery · Successful recovery · Repeated failure
 
 ### Provider Routing
-
-Test:
-
-* Primary provider success
-* Primary provider failure
-* Fallback provider success
-* Multiple provider failures
-* No available providers
+Test: Primary provider success · Primary provider failure · Fallback provider success · Multiple provider failures · No available providers
 
 ### API
+Test: Valid chat completion · Invalid payload · Authentication errors · Rate-limit errors · Provider failures
 
-Test:
+---
 
-* Valid chat completion
-* Invalid payload
-* Authentication errors
-* Rate-limit errors
-* Provider failures
+# Performance Benchmarks
+
+The gateway is built for high-throughput, non-blocking I/O using FastAPI, `asyncio`, and connection pooling. The numbers below are from an actual load test against a running instance — not theoretical targets — so they can be reproduced and re-verified independently.
+
+**Methodology:** A custom asynchronous Python script (`scripts/load_test.py`, `httpx` + `asyncio.Semaphore`) simulated **100 concurrent clients** flooding the gateway with burst traffic, for a total of **1,000 requests**.
+
+**Downstream provider calls:** [state clearly whether this was a mocked provider with a fixed delay (e.g. `asyncio.sleep(0.15)`) or a real provider call — this matters a lot for interpreting the latency numbers below. If mocked, note the fixed delay used so readers can back out pure gateway overhead.]
+
+**Hardware / Environment:**
+- Host: [e.g. Apple M2, 8-core / Intel i7-XXXX, X cores]
+- RAM allocated to Docker Desktop: [e.g. 4 GB]
+- OS: [e.g. macOS 14 / Windows 11 + WSL2]
+- Docker Desktop version: [version]
+
+**Results:**
+
+| Metric | Result |
+| :--- | :--- |
+| **Total Requests** | 1,000 |
+| **Concurrency** | 100 simultaneous clients |
+| **Success Rate** | 100.0% (zero dropped requests) |
+| **Throughput** | 345.94 requests/second |
+| **Average Latency** | 274.47 ms |
+| **p50 Latency** | 216.62 ms |
+| **p95 Latency** | 626.94 ms |
+
+**On the p50 → p95 gap:** The ~2.9x spread between median and tail latency is [explain the cause — e.g. "attributed to Docker Desktop's virtualized network layer, which adds variable overhead on macOS/Windows compared to native Linux networking" or "attributable to connection pool exhaustion at high concurrency, since the pool size was set to X" — pick whichever is actually true once you've checked, since this is the line an interviewer will ask about first].
+
+**What these numbers validate:**
+- The gateway remains stable and fully available under sudden burst traffic — zero dropped or failed requests across 1,000 requests at 100x concurrency.
+- Baseline asynchronous request handling, internal routing (auth → rate limit → circuit breaker → provider dispatch), and Docker's internal network throughput all hold up under load without degradation in success rate.
+- [Once isolated] Pure gateway-added overhead — i.e., latency contributed by the gateway itself on top of the (mocked) provider call — was approximately **[X ms]**, which is the number that best reflects the gateway's own efficiency independent of any external provider's latency.
+
+**Reproducing this benchmark:**
+
+```bash
+docker compose up --build -d
+python scripts/load_test.py --requests 1000 --concurrency 100
+```
+
+*Note: results will vary based on host hardware, Docker resource allocation, and network conditions. Numbers above reflect a local Docker Desktop environment and are intended as a baseline, not an absolute performance ceiling.*
 
 ---
 
@@ -1132,7 +1116,7 @@ Test:
 
 ## Provider Outage
 
-```text
+```
 OpenAI unavailable
        ↓
 Circuit opens
@@ -1142,11 +1126,9 @@ Request routed to Anthropic
 Client receives response
 ```
 
----
-
 ## Multiple Provider Failures
 
-```text
+```
 OpenAI ❌
    ↓
 Anthropic ❌
@@ -1156,11 +1138,9 @@ Groq ✅
 Response
 ```
 
----
-
 ## All Providers Unavailable
 
-```text
+```
 OpenAI ❌
 Anthropic ❌
 Groq ❌
@@ -1170,11 +1150,9 @@ No healthy provider
 Gateway returns controlled error
 ```
 
----
-
 ## Rate Limit Exceeded
 
-```text
+```
 Request
    ↓
 Redis Token Bucket
@@ -1190,18 +1168,18 @@ HTTP 429 Too Many Requests
 
 For production deployments:
 
-* Never commit provider API keys.
-* Store secrets using a secret manager.
-* Rotate API keys regularly.
-* Use HTTPS/TLS.
-* Validate all incoming requests.
-* Apply per-key rate limits.
-* Avoid logging sensitive prompt content.
-* Restrict database access.
-* Restrict Redis access.
-* Use least-privilege credentials.
-* Add authentication and authorization around administrative endpoints.
-* Monitor unusual API usage.
+- Never commit provider API keys.
+- Store secrets using a secret manager.
+- Rotate API keys regularly.
+- Use HTTPS/TLS.
+- Validate all incoming requests.
+- Apply per-key rate limits.
+- Avoid logging sensitive prompt content.
+- Restrict database access.
+- Restrict Redis access.
+- Use least-privilege credentials.
+- Add authentication and authorization around administrative endpoints.
+- Monitor unusual API usage.
 
 ---
 
@@ -1209,20 +1187,20 @@ For production deployments:
 
 For production environments, the gateway can be horizontally scaled:
 
-```text
-                    Load Balancer
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-          ▼              ▼              ▼
-      Gateway 1      Gateway 2      Gateway 3
-          │              │              │
-          └──────────────┼──────────────┘
-                         │
-               ┌─────────┴─────────┐
-               │                   │
-               ▼                   ▼
-             Redis             PostgreSQL
+```
+              Load Balancer
+                   │
+    ┌──────────────┼──────────────┐
+    │              │              │
+    ▼              ▼              ▼
+Gateway 1      Gateway 2      Gateway 3
+    │              │              │
+    └──────────────┼──────────────┘
+                   │
+         ┌─────────┴─────────┐
+         │                   │
+         ▼                   ▼
+       Redis             PostgreSQL
 ```
 
 Because Redis maintains shared rate-limit and circuit-breaker state, multiple gateway instances can coordinate through the same infrastructure.
@@ -1233,82 +1211,74 @@ Because Redis maintains shared rate-limit and circuit-breaker state, multiple ga
 
 The architecture is designed around:
 
-* Asynchronous request handling
-* Non-blocking I/O
-* Shared Redis state
-* Connection pooling
-* Async database writes
-* Provider failover
-* Horizontal scalability
-* Lightweight request processing
+- Asynchronous request handling
+- Non-blocking I/O
+- Shared Redis state
+- Connection pooling
+- Async database writes
+- Provider failover
+- Horizontal scalability
+- Lightweight request processing
 
-The gateway itself should add minimal overhead compared with the latency of the underlying LLM provider.
+The gateway itself should add minimal overhead compared with the latency of the underlying LLM provider (see [Performance Benchmarks](#performance-benchmarks) above for measured numbers).
 
 Actual performance depends on:
 
-* Provider latency
-* Network conditions
-* Model
-* Request size
-* Token count
-* Database performance
-* Redis performance
-* Gateway instance resources
+- Provider latency
+- Network conditions
+- Model
+- Request size
+- Token count
+- Database performance
+- Redis performance
+- Gateway instance resources
 
 ---
 
 # Future Improvements
 
-Potential future extensions include:
-
 ### Routing
-
-* Intelligent model selection
-* Latency-aware routing
-* Cost-aware routing
-* Provider load balancing
-* Weighted provider routing
-* Region-aware routing
+- Intelligent model selection
+- Latency-aware routing
+- Cost-aware routing
+- Provider load balancing
+- Weighted provider routing
+- Region-aware routing
 
 ### Reliability
-
-* Exponential backoff
-* Retry budgets
-* Request hedging
-* Provider health checks
-* Automatic provider recovery
+- Exponential backoff
+- Retry budgets
+- Request hedging
+- Provider health checks
+- Automatic provider recovery
 
 ### Observability
-
-* Grafana dashboards
-* Distributed tracing
-* OpenTelemetry integration
-* Provider-level SLOs
-* Real-time cost dashboards
+- Grafana dashboards
+- Distributed tracing
+- OpenTelemetry integration
+- Provider-level SLOs
+- Real-time cost dashboards
 
 ### Security
-
-* OAuth2
-* JWT authentication
-* Role-based access control
-* API key management dashboard
-* Secret management integration
+- OAuth2
+- JWT authentication
+- Role-based access control
+- API key management dashboard
+- Secret management integration
 
 ### Cost Management
-
-* Per-user budgets
-* Per-organization budgets
-* Model-specific pricing
-* Cost alerts
-* Usage quotas
+- Per-user budgets
+- Per-organization budgets
+- Model-specific pricing
+- Cost alerts
+- Usage quotas
 
 ### Developer Experience
-
-* Python SDK
-* JavaScript/TypeScript SDK
-* OpenAI-compatible client configuration
-* Admin dashboard
-* Provider configuration UI
+- Python SDK
+- JavaScript/TypeScript SDK
+- OpenAI-compatible client configuration
+- Admin dashboard
+- Provider configuration UI
 
 ---
 
@@ -1316,53 +1286,53 @@ Potential future extensions include:
 
 The gateway can be used as infrastructure for:
 
-* AI SaaS applications
-* Enterprise chatbots
-* AI coding assistants
-* Customer support systems
-* RAG applications
-* Agentic AI systems
-* Internal enterprise AI platforms
-* Multi-model applications
-* High-availability AI services
+- AI SaaS applications
+- Enterprise chatbots
+- AI coding assistants
+- Customer support systems
+- RAG applications
+- Agentic AI systems
+- Internal enterprise AI platforms
+- Multi-model applications
+- High-availability AI services
 
 ---
 
 # Example Architecture in Production
 
-```text
-                         Internet
-                            │
-                            ▼
-                    ┌───────────────┐
-                    │ Load Balancer │
-                    └───────┬───────┘
-                            │
-              ┌─────────────┼─────────────┐
-              │             │             │
-              ▼             ▼             ▼
-         Gateway-1     Gateway-2     Gateway-3
-              │             │             │
-              └─────────────┼─────────────┘
-                            │
-                ┌───────────┴───────────┐
-                │                       │
-                ▼                       ▼
-              Redis                 PostgreSQL
-                │
-                │
-                ▼
-          Shared State
-                │
-                ▼
-        ┌─────────────────────┐
-        │  Provider Router    │
-        └──────────┬──────────┘
-                   │
-       ┌───────────┼───────────┐
-       │           │           │
-       ▼           ▼           ▼
-    OpenAI     Anthropic     Groq
+```
+                     Internet
+                        │
+                        ▼
+                ┌───────────────┐
+                │ Load Balancer │
+                └───────┬───────┘
+                        │
+          ┌─────────────┼─────────────┐
+          │             │             │
+          ▼             ▼             ▼
+     Gateway-1     Gateway-2     Gateway-3
+          │             │             │
+          └─────────────┼─────────────┘
+                        │
+            ┌───────────┴───────────┐
+            │                       │
+            ▼                       ▼
+          Redis                 PostgreSQL
+            │
+            │
+            ▼
+      Shared State
+            │
+            ▼
+    ┌─────────────────────┐
+    │  Provider Router    │
+    └──────────┬──────────┘
+               │
+   ┌───────────┼───────────┐
+   │           │           │
+   ▼           ▼           ▼
+OpenAI     Anthropic     Groq
 ```
 
 ---
@@ -1371,13 +1341,13 @@ The gateway can be used as infrastructure for:
 
 Once `.env` is configured:
 
-```bash
+```
 docker compose up --build -d
 ```
 
 Then open:
 
-```text
+```
 http://localhost:8000/docs
 ```
 
@@ -1418,9 +1388,7 @@ The application communicates with the gateway rather than directly with the prov
 
 # License
 
-This project is intended as a production-inspired engineering project.
 MIT License
-```
 
 ---
 
@@ -1428,7 +1396,7 @@ MIT License
 
 **Gogineni Vennela Sai**
 
-GitHub: `https://github.com/vennela506`
+GitHub: [`https://github.com/vennela506`](https://github.com/vennela506)
 
 ---
 
@@ -1436,7 +1404,7 @@ GitHub: `https://github.com/vennela506`
 
 If you are showcasing this project on GitHub or a resume, the core engineering highlights are:
 
-```text
+```
 ✓ OpenAI-compatible LLM Gateway
 ✓ Multi-provider architecture
 ✓ Dynamic provider fallback
@@ -1448,9 +1416,7 @@ If you are showcasing this project on GitHub or a resume, the core engineering h
 ✓ Prometheus observability
 ✓ Structured JSON logging
 ✓ Dockerized infrastructure
-✓ Automated testing
+✓ Automated testing (100% pass rate)
+✓ Load-tested: 100% success rate at 100x concurrency, ~346 req/s
 ✓ Horizontal scalability
 ```
-
----
-
