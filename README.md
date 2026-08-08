@@ -608,7 +608,7 @@ CIRCUIT_RECOVERY_TIMEOUT=30
 ## 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/llm-gateway.git
+git clone https://github.com/vennela506/llm-gateway.git
 cd llm-gateway
 ```
 
@@ -1432,7 +1432,7 @@ MIT License
 
 **Gogineni Vennela Sai**
 
-GitHub: `https://github.com/vennela056`
+GitHub: `https://github.com/vennela506`
 
 ---
 
